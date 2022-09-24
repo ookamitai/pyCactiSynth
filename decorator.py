@@ -13,5 +13,8 @@ def catch_exception(func):
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            logging.error(e)
+            logging.error(
+                f"An error occurred when calling {func.__name__}. Exception: {e}"
+            )
+
     return wrapper

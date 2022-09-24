@@ -1,15 +1,18 @@
+from __future__ import annotations
+
 import logging
 import pickle
 import traceback
 from pathlib import Path
 
 from pydantic import BaseModel, Field
+from typing_extensions import Self
 
 from decorator import catch_exception
 
 
 class Setting:
-    """ A singleton class for storing settings """
+    """A singleton class for storing settings"""
 
     __instance: "Setting" = None
 
@@ -36,7 +39,7 @@ class Setting:
         return cls.__instance
 
     def set_output_path(self, output_path: Path, mkdir: bool = True):
-        """ Set output path """
+        """Set output path"""
 
         assert not output_path.is_file(), "Output path cannot be a file"
         self.output_path = output_path
@@ -63,6 +66,7 @@ class Project(BaseModel):
     voice_dir: Path = Field(alias="VoiceDir")
     out_file: Path = Field(alias="OutFile")
     cache_dir: Path = Field(alias="CacheDir")
+    notes: list[Note] = []
 
     def __int__(
         self,
@@ -80,8 +84,14 @@ class Project(BaseModel):
         self.modes = modes or []
         self.flags = flags or []
 
+    @property
+    def is_empty(self) -> bool:
+        """Check if the project is empty"""
+
+        return len(self.notes) == 0
+
     @catch_exception
-    def add_note(self, *notes: Note) -> "Project":
+    def add_note(self, *notes: Note) -> Self:
         """
         Add notes to the project
 
@@ -94,6 +104,18 @@ class Project(BaseModel):
         for note in notes:
             self.notes.insert(self.find_note_index(note), note)
 
+        return self
+
+    @catch_exception
+    def remove_note_by_index(self, index: int) -> Self:
+        """
+        Remove a note by index
+
+        :param index: Index of the note to remove
+        :return: self
+        """
+
+        self.notes.pop(index)
         return self
 
     @catch_exception
@@ -111,7 +133,7 @@ class Project(BaseModel):
             return None
 
     @catch_exception
-    def sort_notes(self, reverse: bool = False) -> "Project":
+    def sort_notes(self, reverse: bool = False) -> Self:
         """
         Sort notes by start_point, ascending by default
 
@@ -161,9 +183,13 @@ class Project(BaseModel):
         assert isinstance(path, Path), "path must be a Path object"
         assert isinstance(name, str) or name is None, "name must be a string"
         name: str = name or self.name + Setting().extension
+        path: Path = path / name
+        with path.open("wb") as file:
+            pickle.dump(self, file)
+            logging.info(f"Saved project to {path}")
 
     @staticmethod
-    def from_file(path: Path) -> "Project":
+    def from_file(path: Path) -> Self:
         try:
             assert path.is_file(), f"{path} is not a file, or does not exist"
             with path.open("rb") as file:

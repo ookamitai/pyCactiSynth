@@ -1,13 +1,19 @@
 [tool.poetry]
-name = "pyproject"
-version = "0.1.0"
+name = "pyCactiSynth"
+version = "0.0.0"
 description = ""
-authors = ["nullqwertyuiop <49110142+nullqwertyuiop@users.noreply.github.com>"]
+authors = [
+    "ookamitai-P <3271099361@qq.com>",
+    "nullqwertyuiop <49110142+nullqwertyuiop@users.noreply.github.com>"
+]
 
 [tool.poetry.dependencies]
-python = "^3.10"
+python = ">=3.8,<3.12"
 PyQt5 = "^5.15.7"
 pydantic = "^1.10.2"
+pyworld = "^0.3.0"
+scipy = "^1.9.1"
+crepe = "^0.0.12"
 
 [tool.poetry.dev-dependencies]
 

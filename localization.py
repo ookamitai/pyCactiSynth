@@ -1,10 +1,12 @@
+from __future__ import annotations
+
 from pydantic import BaseModel
 
 from model import Setting
 
 
 class ExceptionLocalization(BaseModel):
-    """ Exception localization model """
+    """Exception localization model"""
 
     GENERAL: str = "Exception occurred: {}"
     UNKNOWN: str = "An unknown error occurred. {}"
@@ -15,11 +17,11 @@ class ExceptionLocalization(BaseModel):
 
 
 class NoteLocalization(BaseModel):
-    """ Note localization model """
+    """Note localization model"""
 
 
 class Language(BaseModel):
-    """ Defines a language and its properties """
+    """Defines a language and its properties"""
 
     name: str
     exception: ExceptionLocalization
@@ -27,7 +29,7 @@ class Language(BaseModel):
 
 
 class Localization:
-    """ A singleton class for storing localization """
+    """A singleton class for storing localization"""
 
     __instance: "Localization" = None
 
@@ -43,7 +45,9 @@ class Localization:
         if cls.__instance is None:
             cls.__instance = super().__new__(cls)
             return cls.__instance
-        assert language in cls.__instance.languages, f"Language {language} is not supported"
+        assert (
+            language in cls.__instance.languages
+        ), f"Language {language} is not supported"
         return cls.__instance.languages[language]
 
     def __call__(self, language: str) -> Language:
@@ -51,12 +55,12 @@ class Localization:
         return self.languages[language]
 
     def register_language(self, language: Language):
-        """ Register a language """
+        """Register a language"""
 
         self.languages[language.name] = language
 
     def unregister_language(self, language: str):
-        """ Unregister a language """
+        """Unregister a language"""
 
         assert language in self.languages, f"Language {language} is not supported"
         del self.languages[language]
