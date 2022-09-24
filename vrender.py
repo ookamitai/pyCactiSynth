@@ -1,10 +1,11 @@
 # Project Name: pyCactiSynth
 # Project Desc.: A fully UTAU-compatible editor/synthesizer
 # File name: vrender.py
-# Author: ookamitai
+# Author: ookamitai, null
 # Date: Sept. 24 2022
-import logging
 
+import logging
+import re
 import crepe
 import time
 import contextlib

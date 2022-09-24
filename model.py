@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 import logging
 import pickle
 import traceback
 from pathlib import Path
 
-from pydantic import BaseModel, Field
+import typing
+from pydantic import BaseModel, Field, validator
 from typing_extensions import Self
 
 from decorator import catch_exception
@@ -51,28 +50,37 @@ class Note(BaseModel):
     length: int = Field(alias="Length", ge=0)
     lyric: str = Field(alias="Lyric")
     note_num: int = Field(alias="NoteNum", ge=0)
-    pre_utterance: int = Field(alias="PreUtterance", ge=0)
-    velocity: int = Field(alias="Velocity", ge=0)
-    intensity: int = Field(alias="Intensity", ge=0)
-    modulation: int = Field(alias="Modulation", ge=0)
-    start_point: int = Field(alias="StartPoint", ge=0)
+    pre_utterance: int = Field(0, alias="PreUtterance", ge=0)
+    velocity: int = Field(160, alias="Velocity", ge=0)
+    intensity: int = Field(0, alias="Intensity", ge=0)
+    modulation: int = Field(0, alias="Modulation", ge=0)
+    start_point: int = Field(0, alias="StartPoint", ge=0)
+
+    @validator(
+        "pre_utterance", "velocity", "intensity", "modulation", "start_point", pre=True
+    )
+    def validate(cls, v):
+        return v or 0
 
 
 class Project(BaseModel):
-    version: str = ""
-    tempo: float = Field(alias="Tempo")
-    tracks: int = Field(alias="Tracks")
-    name: str = Field(alias="ProjectName")
-    voice_dir: Path = Field(alias="VoiceDir")
-    out_file: Path = Field(alias="OutFile")
-    cache_dir: Path = Field(alias="CacheDir")
-    notes: list[Note] = []
+    version: str = "OKMT 0.0.0"
+    tempo: float = Field(180.00, alias="Tempo")
+    tracks: int = Field(1, alias="Tracks")
+    name: str = Field("Untitled", alias="ProjectName")
+    voice_dir: Path = Field(Path(), alias="VoiceDir")
+    out_file: Path = Field(Path(), alias="OutFile")
+    cache_dir: Path = Field(Path(), alias="CacheDir")
+    tools: typing.List[str] = []
+    modes: typing.List[str] = []
+    flags: typing.List[str] = []
+    notes: typing.List[Note] = []
 
     def __int__(
         self,
         *notes: Note,
         data: dict = None,
-        flags: list[str] = None,
+        flags: typing.List[str] = None,
         tools: list = None,
         modes: list = None,
     ):
@@ -119,7 +127,7 @@ class Project(BaseModel):
         return self
 
     @catch_exception
-    def get_note(self, index: int) -> Note | None:
+    def get_note(self, index: int) -> typing.Optional[Note]:
         """
         Get a note from the project
 
@@ -182,7 +190,7 @@ class Project(BaseModel):
 
         assert isinstance(path, Path), "path must be a Path object"
         assert isinstance(name, str) or name is None, "name must be a string"
-        name: str = name or self.name + Setting().extension
+        name: str = (name or self.name) + Setting().extension
         path: Path = path / name
         with path.open("wb") as file:
             pickle.dump(self, file)
