@@ -67,6 +67,7 @@ class VRender:
             logging.info(f"Analysis time: {round(time.time() - start, 2)}s. ")
             return timestamp, frequency
 
+    @catch_exception
     def synth(self, audio_data, sr, timestamp, frequency, _target, ratio, gender):
         """
             Perform pitch modifications on given audio data
@@ -108,9 +109,10 @@ class VRender:
         _ap = pw.d4c(audio_data, frequency, timestamp, sr)
 
         # This part is reserved for additional signal processing, for example, GENDER parameters
+        shift = gender if gender >= 1 else 1
         sp = np.zeros_like(_sp)
         for f in range(sp.shape[1]):
-            sp[:, f] = _sp[:, int(f / gender)]
+            sp[:, f] = _sp[:, int(f / shift)]
         ap = _ap
         return pw.synthesize(_target, sp, ap, sr, self.size * ratio)
 
@@ -120,5 +122,7 @@ if __name__ == "__main__":
     VoiceRender = VRender(10)
     data, samples = sf.read("/Users/raykura/Desktop/_ああいあうえあ.wav")
     timestamp, frequency = VoiceRender.get_pitch(data, samples)
-    data_mod = VoiceRender.synth(data, samples, timestamp, frequency, frequency*2, 1.2, 1.2)
+    data_mod = VoiceRender.synth(
+        data, samples, timestamp, frequency, frequency*2, 1.2, 1.2
+    )
     scipy.io.wavfile.write("/Users/raykura/Desktop/_ああいあうえあ2.wav", samples, data_mod)

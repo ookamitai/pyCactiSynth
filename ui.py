@@ -1,5 +1,10 @@
+# Project Name: pyCactiSynth
+# Project Desc.: A fully UTAU-compatible editor/synthesizer
+# File name: ui.py
+# Author: ookamitai, null
+# Date: Oct. 3 2022
+
 from PyQt5.QtWidgets import QApplication, QMainWindow, QPushButton, QLabel, QVBoxLayout, QWidget
-from vrender import *
 
 
 class AnotherWindow(QWidget):
@@ -16,7 +21,6 @@ class AnotherWindow(QWidget):
 
 
 class MainWindow(QMainWindow):
-
     def __init__(self):
         super().__init__()
         self.w = None  # No external window yet.
@@ -30,7 +34,9 @@ class MainWindow(QMainWindow):
         self.w.show()
 
 
-app = QApplication([])
-w = MainWindow()
-w.show()
-app.exec()
+# Again, some driver code here
+if __name__ == "__main__":
+    app = QApplication([])
+    w = MainWindow()
+    w.show()
+    app.exec()
