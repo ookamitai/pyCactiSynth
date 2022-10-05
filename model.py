@@ -51,7 +51,7 @@ class Note(BaseModel):
     lyric: str = Field(alias="Lyric")
     note_num: int = Field(alias="NoteNum", ge=0)
     pre_utterance: int = Field(0, alias="PreUtterance", ge=0)
-    velocity: int = Field(160, alias="Velocity", ge=0)
+    velocity: int = Field(100, alias="Velocity", ge=0)
     intensity: int = Field(0, alias="Intensity", ge=0)
     modulation: int = Field(0, alias="Modulation", ge=0)
     start_point: int = Field(0, alias="StartPoint", ge=0)
@@ -65,7 +65,7 @@ class Note(BaseModel):
 
 class Project(BaseModel):
     version: str = "OKMT 0.0.0"
-    tempo: float = Field(180.00, alias="Tempo")
+    tempo: float = Field(120.00, alias="Tempo")
     tracks: int = Field(1, alias="Tracks")
     name: str = Field("Untitled", alias="ProjectName")
     voice_dir: Path = Field(Path(), alias="VoiceDir")
@@ -219,3 +219,88 @@ class Project(BaseModel):
                 f"An unknown error occurred while loading {path}\n"
                 f"{''.join(traceback.format_tb(e.__traceback__))}"
             )
+
+
+class OTOEntry(BaseModel):
+    file: str = Field("あ.wav", alias="FileName")
+    alias: str = Field(file, alias="Alias")
+    offset: float = Field(0.0, alias="Offset", ge=0)
+    fixed: float = Field(0.0, alias="Fixed", ge=0)
+    blank: float = Field(0.0, alias="Blank", ge=0)
+    preutter: float = Field(0.0, alias="PreUtter", ge=0)
+    overlap: float = Field(0.0, alias="Overlap", ge=0)
+
+    # @catch_exception
+    def __init__(self, line):
+        super().__init__()
+        line = line.replace("\n", "", 1)
+        self.file = line.split("=", maxsplit=1)[0]
+        _alias = line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[0]
+        self.alias = _alias if _alias != "" else self.file.split(".", maxsplit=1)[0]
+        self.offset, self.fixed, self.blank, self.preutter, self.overlap = [
+            float(d) for d in line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[1:]
+            if d.replace('-','',1).replace(".", "", 1).isdigit()
+        ]
+
+    @catch_exception
+    def get_property(self, data_type):
+        oto_property = ["File", "Alias", "Offset", "Fixed", "Blank", "PreUtter", "Overlap"]
+
+        return (
+            self.file if data_type == oto_property[0] else
+            self.alias if data_type == oto_property[1] else
+            self.offset if data_type == oto_property[2] else
+            self.fixed if data_type == oto_property[3] else
+            self.blank if data_type == oto_property[4] else
+            self.preutter if data_type == oto_property[5] else
+            self.overlap if data_type == oto_property[6] else
+            None
+        )
+
+    @catch_exception
+    def to_string(self):
+        return (
+            f"{self.file}={self.alias},{self.offset},{self.fixed},{self.blank},{self.preutter},{self.overlap}"
+        )
+
+
+class OTOSetting(BaseModel):
+    size: int = 0
+    settings: typing.List[OTOEntry] = []
+
+    @catch_exception
+    def __init__(self, path):
+        super().__init__()
+        count = 0
+        with open(path, "r", encoding="shift-jis") as oto:
+            for line in oto:
+                self.settings.append(OTOEntry(line))
+                count += 1
+        self.size = count
+        print(
+            f"Loaded {count} entry." if count == 1 else f"Loaded {count} entries."
+        )
+
+    @catch_exception
+    def get_entry(self, index):
+        return self.settings[index]
+
+    @catch_exception
+    def remove_entry(self, index):
+        self.settings.pop(index)
+        return self
+
+    @catch_exception
+    def to_file(self, path):
+        oto = open(path, "w", encoding="shift-jis")
+        count = 0
+        for entry in range(len(self.settings)):
+            oto.write(
+                f"{self.settings[entry].to_string()}\n"
+            )
+            count -= -1
+        print(
+            f"{count} entry written to {path}." if count == 1 else f"{count} entries written to {path}."
+        )
+        oto.close()
+

@@ -79,7 +79,7 @@ class USTParser:
 
 
 if __name__ == "__main__":
-    project: Project = USTParser.parse(Path() / "assets" / "BALSAM VCV.ust")
+    project: Project = USTParser.parse(Path() / "assets" / "USTs" / "BALSAM VCV.ust")
     print(project.json(indent=4, ensure_ascii=False))
     project.to_file(Path())
     print(Project.from_file(Path("新規プロジェクト.okmt")).name)
