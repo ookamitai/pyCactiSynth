@@ -7,12 +7,14 @@
 import vrender
 import parser
 import model
+from pathlib import Path
+
 
 # Driver code
 if __name__ == "__main__":
-    oto_setting = model.OTOSetting("/Users/raykura/Desktop/Voices/噤音セロ連続音ver.1.0/d3/oto.ini")
-    print(oto_setting.size)
-    print(oto_setting.get_entry(1).to_string())
-    oto_setting.remove_entry(1)
-    print(oto_setting.get_entry(1).to_string())
-    oto_setting.to_file("/Users/raykura/Desktop/new.ini")
+    vb = model.VoiceBank(Path("/Users/raykura/Desktop/Voices/噤音セロ連続音ver.1.0"))
+    print(vb.find_entry("alias", "- k"))
+    o = model.OTOSetting().from_file(Path("/Users/raykura/Desktop/new.ini"))
+    print(o.size)
+    o.append_entry(1, model.OTOEntry().from_string("1=2,3,4,5,6,7"))
+    print(o.json(indent=4, ensure_ascii=0))

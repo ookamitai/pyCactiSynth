@@ -24,7 +24,7 @@ class Setting:
     """ Output path """
 
     extension: str = ".okmt"
-    """ Extension of the output file, stands for Ookamitai! """
+    """ Extension of the output file, stands for ookamitai! """
 
     def __init__(self, output_path: Path = None):
         if output_path is not None:
@@ -140,6 +140,8 @@ class Project(BaseModel):
         except IndexError:
             return None
 
+    # Why sorting the notes?
+    # TODO: Remove this part
     @catch_exception
     def sort_notes(self, reverse: bool = False) -> Self:
         """
@@ -222,85 +224,115 @@ class Project(BaseModel):
 
 
 class OTOEntry(BaseModel):
-    file: str = Field("あ.wav", alias="FileName")
-    alias: str = Field(file, alias="Alias")
+    file: str = Field("", alias="FileName")
+    alias: str = Field("", alias="Alias")
     offset: float = Field(0.0, alias="Offset", ge=0)
     fixed: float = Field(0.0, alias="Fixed", ge=0)
     blank: float = Field(0.0, alias="Blank", ge=0)
     preutter: float = Field(0.0, alias="PreUtter", ge=0)
     overlap: float = Field(0.0, alias="Overlap", ge=0)
 
-    # @catch_exception
-    def __init__(self, line):
+    @catch_exception
+    def __init__(self):
         super().__init__()
+
+    @catch_exception
+    def from_string(self, line) -> Self:
         line = line.replace("\n", "", 1)
         self.file = line.split("=", maxsplit=1)[0]
         _alias = line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[0]
         self.alias = _alias if _alias != "" else self.file.split(".", maxsplit=1)[0]
         self.offset, self.fixed, self.blank, self.preutter, self.overlap = [
             float(d) for d in line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[1:]
-            if d.replace('-','',1).replace(".", "", 1).isdigit()
-        ]
+            if d.replace('-', '', 1).replace(".", "", 1).isdigit()]
+        return self
 
     @catch_exception
-    def get_property(self, data_type):
-        oto_property = ["File", "Alias", "Offset", "Fixed", "Blank", "PreUtter", "Overlap"]
-
-        return (
-            self.file if data_type == oto_property[0] else
-            self.alias if data_type == oto_property[1] else
-            self.offset if data_type == oto_property[2] else
-            self.fixed if data_type == oto_property[3] else
-            self.blank if data_type == oto_property[4] else
-            self.preutter if data_type == oto_property[5] else
-            self.overlap if data_type == oto_property[6] else
-            None
-        )
-
-    @catch_exception
-    def to_string(self):
+    def to_string(self) -> str:
         return (
             f"{self.file}={self.alias},{self.offset},{self.fixed},{self.blank},{self.preutter},{self.overlap}"
         )
 
 
 class OTOSetting(BaseModel):
-    size: int = 0
+    size: int = Field(0, alias="Size", ge=0)
+    path: Path = None
     settings: typing.List[OTOEntry] = []
 
     @catch_exception
-    def __init__(self, path):
+    def __init__(self):
         super().__init__()
+
+    @catch_exception
+    def from_file(self, path: Path) -> Self:
+        assert isinstance(path, Path), "path must be a Path object"
+        self.path = path
         count = 0
         with open(path, "r", encoding="shift-jis") as oto:
             for line in oto:
-                self.settings.append(OTOEntry(line))
+                self.settings.append(OTOEntry().from_string(line))
                 count += 1
         self.size = count
         print(
             f"Loaded {count} entry." if count == 1 else f"Loaded {count} entries."
         )
+        return self
 
     @catch_exception
-    def get_entry(self, index):
+    def get_entry(self, index: int) -> OTOEntry:
         return self.settings[index]
 
     @catch_exception
-    def remove_entry(self, index):
+    def remove_entry(self, index: int) -> Self:
         self.settings.pop(index)
         return self
 
     @catch_exception
-    def to_file(self, path):
+    def append_entry(self, index: int, data: OTOEntry) -> Self:
+        self.settings.insert(index, data)
+        return self
+
+    @catch_exception
+    def to_file(self, path: Path):
         oto = open(path, "w", encoding="shift-jis")
         count = 0
         for entry in range(len(self.settings)):
             oto.write(
                 f"{self.settings[entry].to_string()}\n"
             )
-            count -= -1
+            count += 1
         print(
             f"{count} entry written to {path}." if count == 1 else f"{count} entries written to {path}."
         )
         oto.close()
+
+
+class VoiceBank(BaseModel):
+    name: str = Field("None", alias="VoiceBank Name")
+    settings: typing.Dict[str, OTOSetting] = Field({}, alias="OTO Configuration")
+
+    @catch_exception
+    def __init__(self, path: Path):
+        super().__init__()
+        assert isinstance(path, Path), "path is not a Path object"
+        with open(Path(path) / "character.txt", "r", encoding="shift-jis") as char:
+            for lines in char:
+                if lines.startswith("name="):
+                    self.name = lines.split("=", 1)[1].replace("\n", "", 1)
+                    print(f"VoiceBank {self.name} successfully loaded.")
+                    break
+
+        for config in Path(path).rglob('oto.ini'):
+            print(f"Configuration found at {config.parent.absolute().name}/{config.name}")
+            self.settings[config.parent.absolute().name] = OTOSetting().from_file(config)
+
+    @catch_exception
+    def find_entry(self, target: str, data: str) -> typing.Tuple[OTOEntry]:
+        ret = ()
+        for parent, oto in self.settings.items():
+            for entry in oto.settings:
+                if entry.__getattribute__(target) == data:
+                    ret = ret + (entry,)
+
+        return ret if len(ret) != 0 else (OTOEntry(),)
 
