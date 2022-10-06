@@ -141,7 +141,8 @@ class Project(BaseModel):
             return None
 
     # Why sorting the notes?
-    # TODO: Remove this part
+    # This still doesn't make any sense to me since nearly all the start_points of the notes are zero,
+    # or it's some obscure technique I didn't know
     @catch_exception
     def sort_notes(self, reverse: bool = False) -> Self:
         """
@@ -274,7 +275,7 @@ class OTOSetting(BaseModel):
                 count += 1
         self.size = count
         print(
-            f"Loaded {count} entry." if count == 1 else f"Loaded {count} entries."
+            f"Loaded {count} entry from {path}" if count == 1 else f"Loaded {count} entries from {path}"
         )
         return self
 
@@ -293,7 +294,7 @@ class OTOSetting(BaseModel):
         return self
 
     @catch_exception
-    def to_file(self, path: Path):
+    def to_file(self, path: Path) -> None:
         oto = open(path, "w", encoding="shift-jis")
         count = 0
         for entry in range(len(self.settings)):
@@ -309,30 +310,50 @@ class OTOSetting(BaseModel):
 
 class VoiceBank(BaseModel):
     name: str = Field("None", alias="VoiceBank Name")
+    author: str = Field("None", alias="VoiceBank Author")
+    image: str = Field("None", alias="VoiceBank Icon")
+    sample: str = Field("Random", alias="Sample")
+    web: str = Field("None", alias="Website")
+    readme: str = Field("None", alias="Readme")
     settings: typing.Dict[str, OTOSetting] = Field({}, alias="OTO Configuration")
+    oto_count: int = Field(0, alias="OTO Count", ge=0)
+    file_count: int = Field(0, alias="File Count", ge=0)
 
     @catch_exception
     def __init__(self, path: Path):
         super().__init__()
+        target = ["name", "author", "image", "sample", "web"]
         assert isinstance(path, Path), "path is not a Path object"
         with open(Path(path) / "character.txt", "r", encoding="shift-jis") as char:
+            i = 0
             for lines in char:
-                if lines.startswith("name="):
-                    self.name = lines.split("=", 1)[1].replace("\n", "", 1)
-                    print(f"VoiceBank {self.name} successfully loaded.")
-                    break
+                if lines.lower().startswith(f"{target[i]}="):
+                    self.__setattr__(target[i], lines.split("=", 1)[1].replace("\n", "", 1))
+                i += 1 if i < len(target) - 1 else 0
+
+        with open(Path(path) / "readme.txt", "r", encoding="shift-jis") as read:
+            self.readme = read.read()
+
+        self.sample = "Random" if self.sample == "" else self.sample
 
         for config in Path(path).rglob('oto.ini'):
             print(f"Configuration found at {config.parent.absolute().name}/{config.name}")
             self.settings[config.parent.absolute().name] = OTOSetting().from_file(config)
 
+        for i in range(len(self.settings)):
+            self.oto_count += list(self.settings.values())[i].size
+
+        for d in Path(path).rglob('*.wav'):
+            self.file_count += 1
+
+        print(f"VoiceBank {self.name} successfully loaded.")
+
     @catch_exception
-    def find_entry(self, target: str, data: str) -> typing.Tuple[OTOEntry]:
+    def find_entry(self, target: str, data: (str, int)) -> typing.Tuple[OTOEntry]:
         ret = ()
         for parent, oto in self.settings.items():
             for entry in oto.settings:
                 if entry.__getattribute__(target) == data:
-                    ret = ret + (entry,)
+                    ret += (entry,)
 
         return ret if len(ret) != 0 else (OTOEntry(),)
-
