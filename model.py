@@ -239,13 +239,22 @@ class OTOEntry(BaseModel):
 
     @catch_exception
     def from_string(self, line) -> Self:
+
         line = line.replace("\n", "", 1)
         self.file = line.split("=", maxsplit=1)[0]
         _alias = line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[0]
         self.alias = _alias if _alias != "" else self.file.split(".", maxsplit=1)[0]
-        self.offset, self.fixed, self.blank, self.preutter, self.overlap = [
-            float(d) for d in line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[1:]
-            if d.replace('-', '', 1).replace(".", "", 1).isdigit()]
+
+        try:
+            self.offset, self.fixed, self.blank, self.preutter, self.overlap = [
+                float(d) for d in line.split("=", maxsplit=1)[1].split(",", maxsplit=5)[1:]
+                if d.replace('-', '', 1).replace(".", "", 1).isdigit()
+            ]
+        except ValueError:
+            self.offset, self.fixed, self.blank, self.preutter, self.overlap = (0, 0, 0, 0, 0)
+            print(f"Error processing {line}, this line has been set to default values:\n"
+                  f"{self.file}={self.alias},{self.offset},{self.fixed},{self.blank},{self.preutter},{self.overlap}")
+
         return self
 
     @catch_exception
@@ -294,6 +303,15 @@ class OTOSetting(BaseModel):
         return self
 
     @catch_exception
+    def find_entry(self, target: str, data: (str, int)) -> typing.Tuple[OTOEntry]:
+        ret = ()
+        for entry in self.settings:
+            if entry.__getattribute__(target) == data:
+                ret += (entry,)
+
+        return ret if len(ret) != 0 else (OTOEntry(),)
+
+    @catch_exception
     def to_file(self, path: Path) -> None:
         oto = open(path, "w", encoding="shift-jis")
         count = 0
@@ -316,6 +334,9 @@ class VoiceBank(BaseModel):
     web: str = Field("None", alias="Website")
     readme: str = Field("None", alias="Readme")
     settings: typing.Dict[str, OTOSetting] = Field({}, alias="OTO Configuration")
+    prefix_map: typing.Dict[str, str] = Field({}, alias="OTO Configuration")
+    # ^ This has yet to be implemented
+
     oto_count: int = Field(0, alias="OTO Count", ge=0)
     file_count: int = Field(0, alias="File Count", ge=0)
 
@@ -346,7 +367,7 @@ class VoiceBank(BaseModel):
         for d in Path(path).rglob('*.wav'):
             self.file_count += 1
 
-        print(f"VoiceBank {self.name} successfully loaded.")
+        print(f"Loaded VoiceBank {self.name}.")
 
     @catch_exception
     def find_entry(self, target: str, data: (str, int)) -> typing.Tuple[OTOEntry]:
