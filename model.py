@@ -383,7 +383,7 @@ class VoiceBank(BaseModel):
         for i in range(len(self.settings)):
             self.oto_count += list(self.settings.values())[i].size
 
-        for d in Path(path).rglob('*.wav'):
+        for _ in Path(path).rglob('*.wav'):
             self.file_count += 1
 
         logging.info(f"Loaded VoiceBank {self.name}.")
