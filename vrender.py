@@ -63,8 +63,6 @@ class VRender:
                 model_capacity="full",
                 verbose=1,
             )
-            # Print analysis time to give users an impression of how bad their computers are
-            logging.info(f"Analysis time: {round(time.time() - start, 2)}s. ")
             return timestamp, frequency
 
     @catch_exception

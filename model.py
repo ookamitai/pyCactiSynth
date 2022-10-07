@@ -7,7 +7,7 @@ import typing
 from pydantic import BaseModel, Field, validator
 from typing_extensions import Self
 
-from decorator import catch_exception
+from decorator import catch_exception, timer_func
 
 
 class Setting:
@@ -237,7 +237,7 @@ class OTOEntry(BaseModel):
     def __init__(self):
         super().__init__()
 
-    # catch_exception
+    @catch_exception
     def from_string(self, line) -> Self:
 
         line = line.replace("\n", "", 1)
@@ -342,6 +342,7 @@ class VoiceBank(BaseModel):
     file_count: int = Field(0, alias="File Count", ge=0)
 
     @catch_exception
+    @timer_func
     def __init__(self, path: Path):
         super().__init__()
         target = ["name", "author", "image", "sample", "web"]
@@ -357,7 +358,7 @@ class VoiceBank(BaseModel):
             self.readme = read.read()
 
         logging.warning("CactiSynth has dropped the compatibility for prefixes in prefix.map.\n"
-                        "\t\t\t Please make changes if necessary.")
+                        "Please make changes if necessary.")
         try:
             with open(Path(path) / "prefix.map", "r", encoding="shift-jis") as prefix:
                 for li in prefix:
@@ -390,7 +391,7 @@ class VoiceBank(BaseModel):
     @catch_exception
     def find_entry(self, target: str, data: (str, int), key: str = "", find_all: bool = 0) -> typing.Tuple[OTOEntry]:
         ret = ()
-        if key != "" and target.lower() == "alias":
+        if key != "" and target.lower() == "alias" and self.prefix_map != {}:
             data += self.prefix_map[key]
         for parent, oto in self.settings.items():
             for entry in oto.settings:
