@@ -10,7 +10,6 @@ from pathlib import Path
 
 # Driver code
 if __name__ == "__main__":
-    vb = model.VoiceBank(Path("/Users/raykura/Desktop/Voices/KaroJPN_Quiet"))
-    print(vb.settings["C#3"].find_entry("alias", "i RC#3"))
-    print(vb.name)
+    vb = model.VoiceBank(Path("/Users/raykura/Desktop/Voices/AroPower"))
+    print(vb.find_entry("alias", "- あ", find_all=True))
 

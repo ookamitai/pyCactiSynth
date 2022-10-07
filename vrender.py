@@ -4,7 +4,7 @@
 # Author: ookamitai, null
 # Date: Sept. 24 2022
 
-import os
+from os import environ
 import logging
 # import re
 import scipy
@@ -15,7 +15,7 @@ import pyworld as pw
 from decorator import catch_exception
 import soundfile as sf
 import numpy as np
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 
 class VRenderError(RuntimeError):

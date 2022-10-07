@@ -77,12 +77,12 @@ class Project(BaseModel):
     notes: typing.List[Note] = []
 
     def __int__(
-        self,
-        *notes: Note,
-        data: dict = None,
-        flags: typing.List[str] = None,
-        tools: list = None,
-        modes: list = None,
+            self,
+            *notes: Note,
+            data: dict = None,
+            flags: typing.List[str] = None,
+            tools: list = None,
+            modes: list = None,
     ):
         assert isinstance(data, dict), "data must be a dict"
         super().__init__(**data)
@@ -237,7 +237,7 @@ class OTOEntry(BaseModel):
     def __init__(self):
         super().__init__()
 
-    @catch_exception
+    # catch_exception
     def from_string(self, line) -> Self:
 
         line = line.replace("\n", "", 1)
@@ -252,8 +252,9 @@ class OTOEntry(BaseModel):
             ]
         except ValueError:
             self.offset, self.fixed, self.blank, self.preutter, self.overlap = (0, 0, 0, 0, 0)
-            print(f"Error processing {line}, this line has been set to default values:\n"
-                  f"{self.file}={self.alias},{self.offset},{self.fixed},{self.blank},{self.preutter},{self.overlap}")
+            logging.error(f"Error processing: {line}\nThis line has been set to default values: "
+                          f"{self.file}="
+                          f"{self.alias},{self.offset},{self.fixed},{self.blank},{self.preutter},{self.overlap}")
 
         return self
 
@@ -278,14 +279,16 @@ class OTOSetting(BaseModel):
         assert isinstance(path, Path), "path must be a Path object"
         self.path = path
         count = 0
+
         with open(path, "r", encoding="shift-jis") as oto:
             for line in oto:
                 self.settings.append(OTOEntry().from_string(line))
                 count += 1
-        self.size = count
-        print(
-            f"Loaded {count} entry from {path}" if count == 1 else f"Loaded {count} entries from {path}"
-        )
+            self.size = count
+            logging.info(
+                f"Loaded {count} entry from {path}" if count == 1 else f"Loaded {count} entries from {path}"
+            )
+
         return self
 
     @catch_exception
@@ -320,7 +323,7 @@ class OTOSetting(BaseModel):
                 f"{self.settings[entry].to_string()}\n"
             )
             count += 1
-        print(
+        logging.info(
             f"{count} entry written to {path}." if count == 1 else f"{count} entries written to {path}."
         )
         oto.close()
@@ -335,8 +338,6 @@ class VoiceBank(BaseModel):
     readme: str = Field("None", alias="Readme")
     settings: typing.Dict[str, OTOSetting] = Field({}, alias="OTO Configuration")
     prefix_map: typing.Dict[str, str] = Field({}, alias="OTO Configuration")
-    # ^ This has yet to be implemented
-
     oto_count: int = Field(0, alias="OTO Count", ge=0)
     file_count: int = Field(0, alias="File Count", ge=0)
 
@@ -355,10 +356,27 @@ class VoiceBank(BaseModel):
         with open(Path(path) / "readme.txt", "r", encoding="shift-jis") as read:
             self.readme = read.read()
 
+        logging.warning("CactiSynth has dropped the compatibility for prefixes in prefix.map.\n"
+                        "\t\t\t Please make changes if necessary.")
+        try:
+            with open(Path(path) / "prefix.map", "r", encoding="shift-jis") as prefix:
+                for li in prefix:
+                    li = li.replace("\n", "", 2)
+                    try:
+                        self.prefix_map[li.split("\t\t", 1)[0]] = li.split("\t\t", 1)[1]
+                    except IndexError:
+                        try:
+                            self.prefix_map[li.split("\t\t", 1)[0]] = ""
+                        except IndexError:
+                            self.prefix_map[""] = ""
+        except FileNotFoundError:
+            logging.warning(f"prefix.map for {self.name} not found!\nVoiceBank will now initialize without prefix.map")
+            self.prefix_map = {}
+
         self.sample = "Random" if self.sample == "" else self.sample
 
         for config in Path(path).rglob('oto.ini'):
-            print(f"Configuration found at {config.parent.absolute().name}/{config.name}")
+            logging.info(f"Configuration found at {config.parent.absolute().name}/{config.name}")
             self.settings[config.parent.absolute().name] = OTOSetting().from_file(config)
 
         for i in range(len(self.settings)):
@@ -367,14 +385,20 @@ class VoiceBank(BaseModel):
         for d in Path(path).rglob('*.wav'):
             self.file_count += 1
 
-        print(f"Loaded VoiceBank {self.name}.")
+        logging.info(f"Loaded VoiceBank {self.name}.")
 
     @catch_exception
-    def find_entry(self, target: str, data: (str, int)) -> typing.Tuple[OTOEntry]:
+    def find_entry(self, target: str, data: (str, int), key: str = "", find_all: bool = 0) -> typing.Tuple[OTOEntry]:
         ret = ()
+        if key != "" and target.lower() == "alias":
+            data += self.prefix_map[key]
         for parent, oto in self.settings.items():
             for entry in oto.settings:
-                if entry.__getattribute__(target) == data:
-                    ret += (entry,)
+                if find_all == 0:
+                    if entry.__getattribute__(target) == data:
+                        ret += (entry,)
+                if find_all == 1:
+                    if entry.__getattribute__(target).startswith(data) == 1:
+                        ret += (entry,)
 
         return ret if len(ret) != 0 else (OTOEntry(),)
